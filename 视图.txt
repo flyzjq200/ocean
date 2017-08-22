@@ -1,0 +1,105 @@
+/**
+	 * 查询视图,该视图必须是自动生成的
+	 * 
+	 * @param linkId
+	 *            如果是本地数据库，为null。否则为远程数据库的ID
+	 * @param viewName
+	 *            视图名称，不能为空
+	 * @return 结果排序
+	 */
+	@RequestMapping(value = "findView", produces = { "application/json;charset=UTF-8" })
+	@ResponseBody
+	public ReturnData findView(HttpServletRequest request,
+			@RequestParam Long linkId, @RequestParam String viewName)
+			throws IOException {
+		AutoView autoView = orgCollectDBManager.findView(linkId, viewName);
+		return new ReturnData(autoView);
+	}
+
+	/**
+	 * 查询数据库所有的视图
+	 * 
+	 * @param linkId
+	 *            如果是本地数据库，为null。否则为远程数据库的ID
+	 * @return 视图名称列表
+	 */
+	@RequestMapping(value = "findViews", produces = { "application/json;charset=UTF-8" })
+	@ResponseBody
+	public ReturnData findViews(HttpServletRequest request,
+			@RequestParam Long linkId) throws IOException {
+		List<String> viewNames = orgCollectDBManager.findViews(linkId);
+		return new ReturnData(viewNames);
+	}
+
+	/**
+	 * 创建视图
+	 * 
+	 * @param view
+	 *            除了列别名，其它所有信息都不能为空
+	 */
+	@RequestMapping(value = "createView", method = RequestMethod.POST)
+	@ResponseBody
+	public boolean createView(AutoView view, SepUser currentUser)
+			throws IOException {
+		orgCollectDBManager.createView(view, currentUser);
+		return false;
+	}
+
+	/**
+	 * 删除自动创建的视图
+	 * 
+	 * @param linkId
+	 *            如果是本地数据库，为null。否则为远程数据库的ID
+	 * @param viewName
+	 *            视图名称，不能为空，并且必须是自动创建的视图
+	 */
+	@RequestMapping(value = "dropView", method = RequestMethod.POST)
+	@ResponseBody
+	public ReturnData dropView(HttpServletRequest request,
+			@RequestParam Long linkId, @RequestParam String viewName)
+			throws IOException {
+		SepUser currentUser = this.getCurrentUser(request);
+		orgCollectDBManager.dropView(linkId, viewName, currentUser);
+		return new ReturnData();
+	}
+
+	/**
+	 * 修改视图。实际是删除原所有信息，重新添加创建一次
+	 */
+	@RequestMapping(value = "updateView", method = RequestMethod.POST)
+	@ResponseBody
+	public ReturnData updateView(HttpServletRequest request,
+			@RequestParam String json) throws IOException {
+		if (StringUtils.isEmpty(json)) {
+			return new ReturnData(SysCodeMsg.PARAM_IS_ERROR);
+		}
+		AutoView autoView = new Gson().fromJson(json, AutoView.class);
+		SepUser currentUser = this.getCurrentUser(request);
+		orgCollectDBManager.updateView(autoView, currentUser);
+		return new ReturnData();
+	}
+
+
+
+/**
+	 * 递归查找文件结构
+	 * 
+	 * @method create
+	 * @author 
+	 * @date 2016年8月24日 下午8:32:26
+	 */
+	private void recursionSelectCatalog(List<Map<String, Object>> root,
+			ChildCityCatalog childCityCatalog) {
+		List<Map<String, Object>> listMap = new LinkedList<>();
+		Map<String, Object> map = new HashMap<>();
+		map.put("id", childCityCatalog.getId());
+		map.put("name", childCityCatalog.getName());
+		map.put("superCalalogId", childCityCatalog.getSuperCalalogId());
+		root.add(map);
+		if (!JudgeUtil.isEmpty(childCityCatalog.getLessCalalog())) {
+			for (ChildCityCatalog child : childCityCatalog.getLessCalalog()) {
+				this.recursionSelectCatalog(listMap, child);
+				map.put("children", listMap);
+			}
+		}
+	}
